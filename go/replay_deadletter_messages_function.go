@@ -70,9 +70,10 @@ func pullMessages(projectId, subscriptionId string, limitMessages int) error {
 		mu.Lock()
 		defer mu.Unlock()
 
-		if processMessage(msg) {
+		if messageMatchesFilterCriteria(msg) {
 			log.Println("Got message with id" + msg.ID + " data " + string(msg.Data))
 			processedMessages++
+			//TODO: publish message to topic to replay
 			msg.Ack()
 		} else {
 			log.Println("ignored message with id" + msg.ID + " data " + string(msg.Data))
@@ -97,7 +98,7 @@ func pullMessages(projectId, subscriptionId string, limitMessages int) error {
 	return nil
 }
 
-func processMessage(msg *pubsub.Message) bool {
+func messageMatchesFilterCriteria(msg *pubsub.Message) bool {
 	if val, ok := msg.Attributes[subscriptionSourceFilterName]; ok {
 		if val == subscriptionFilter {
 			return true
