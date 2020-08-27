@@ -21,6 +21,8 @@ def filter_messages_by_source_subscription(subscriptionId, numberOfMessages, fil
                     filteredMessages.append(msg)
                     #publish
                     msg.message.ack()
+                else:
+                    msg.message.nack()
 
                 if len(filteredMessages) == numberOfMessages:
                     break

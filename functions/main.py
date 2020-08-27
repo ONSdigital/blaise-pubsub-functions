@@ -30,6 +30,6 @@ def Replay_Deadletter_Messages(request):
     for msg in get_filtered_messages(subscriptionFilter, deadletterSubscriptionId, 1):
         print(msg)
 
-    return 'Topic {} found!'.format(escape(publishToTopicId))
+    return 'Complete'
 
 

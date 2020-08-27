@@ -80,7 +80,6 @@ func pullMessages(projectId, subscriptionId string, limitMessages int) error {
 		}
 
 		if processedMessages == limitMessages {
-			log.Println("Cancel limit")
 			cancel()
 		}
 
