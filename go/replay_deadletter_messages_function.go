@@ -27,7 +27,7 @@ const timeoutInSeconds = 30 * time.Second
 func main() {
 	log.Println("Started")
 
-	err := processMessages(googleCloudProject, subscriptionId, maxMessages)
+	err := processMessagesInSubscription(subscriptionId, maxMessages)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -35,16 +35,15 @@ func main() {
 	log.Println("Finished")
 }
 
-func processMessages(projectId, subscriptionId string, limitMessages int) error {
+func processMessagesInSubscription(subscriptionId string, limitMessages int) error {
 	ctx := context.Background()
 
-	client, err := pubsub.NewClient(ctx, projectId, option.WithCredentialsFile(credentialsPath))
+	client, err := pubsub.NewClient(ctx, googleCloudProject, option.WithCredentialsFile(credentialsPath))
 	if err != nil {
 		log.Fatal(err)
 		return fmt.Errorf("pubsub.NewClient: %v", err)
 	}
 
-	//consume messages
 	var mu sync.Mutex
 	processedMessages := 0
 	sub := client.Subscription(subscriptionId)
@@ -66,11 +65,13 @@ func processMessages(projectId, subscriptionId string, limitMessages int) error 
 		}
 
 		if processedMessages == limitMessages {
+			log.Println("Cancelled - limit reached")
 			cancel()
 		}
 
 		select {
 		case <-ctx.Done():
+			log.Println("Cancelled - timout period reached")
 			cancel()
 		}
 	})
