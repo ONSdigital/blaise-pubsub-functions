@@ -16,42 +16,26 @@ var (
 	googleCloudProject = "ons-blaise-dev-jam39"
 	topicId            = "blaise-deadletter-test-topic"
 	subscriptionId     = "blaise-deadletter-test-subscription"
-
-	subscriptionFilter = "subscription-tel"
-	credentialsPath    = "/users/jamiekerr/Downloads/ons-blaise-dev-jam39-6de66e990a49.json"
-	messages           []string
+	sourceSubscription = "subscription-tel"
 )
 
 const maxMessages = 10
-const subscriptionSourceFilterName = "CloudPubSubDeadLetterSourceSubscription"
+const subscriptionSourceAttributeName = "CloudPubSubDeadLetterSourceSubscription"
+const credentialsPath = "/users/jamiekerr/Downloads/ons-blaise-dev-jam39-6de66e990a49.json"
+const timeoutInSeconds = 30 * time.Second
 
 func main() {
-	ctx := context.Background()
-	client, err := pubsub.NewClient(ctx, googleCloudProject, option.WithCredentialsFile(credentialsPath))
+	log.Println("Started")
+
+	err := processMessages(googleCloudProject, subscriptionId, maxMessages)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	topic = client.Topic(topicId)
-
-	exists, err := topic.Exists(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if exists {
-		log.Println("Topic exists")
-	} else {
-		log.Println("Topic does not exist")
-	}
-
-	err = pullMessages(googleCloudProject, subscriptionId, maxMessages)
-	if err != nil {
-		log.Fatal(err)
-	}
+	log.Println("Finished")
 }
 
-func pullMessages(projectId, subscriptionId string, limitMessages int) error {
+func processMessages(projectId, subscriptionId string, limitMessages int) error {
 	ctx := context.Background()
 
 	client, err := pubsub.NewClient(ctx, projectId, option.WithCredentialsFile(credentialsPath))
@@ -64,13 +48,14 @@ func pullMessages(projectId, subscriptionId string, limitMessages int) error {
 	var mu sync.Mutex
 	processedMessages := 0
 	sub := client.Subscription(subscriptionId)
-	cctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+
+	cctx, cancel := context.WithTimeout(ctx, timeoutInSeconds)
 
 	err = sub.Receive(cctx, func(ctx context.Context, msg *pubsub.Message) {
 		mu.Lock()
 		defer mu.Unlock()
 
-		if messageMatchesFilterCriteria(msg) {
+		if messageMatchesAttributeFilter(msg, subscriptionSourceAttributeName, sourceSubscription) {
 			log.Println("Got message with id" + msg.ID + " data " + string(msg.Data))
 			processedMessages++
 			//TODO: publish message to topic to replay
@@ -94,13 +79,12 @@ func pullMessages(projectId, subscriptionId string, limitMessages int) error {
 		return fmt.Errorf("Receive: %v", err)
 	}
 
-	log.Println("Complete")
 	return nil
 }
 
-func messageMatchesFilterCriteria(msg *pubsub.Message) bool {
-	if val, ok := msg.Attributes[subscriptionSourceFilterName]; ok {
-		if val == subscriptionFilter {
+func messageMatchesAttributeFilter(msg *pubsub.Message, attributeName, attributeFilter string) bool {
+	if val, ok := msg.Attributes[attributeName]; ok {
+		if val == attributeFilter {
 			return true
 		}
 	}
